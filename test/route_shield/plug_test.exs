@@ -1,6 +1,7 @@
 defmodule RouteShield.PlugTest do
   use ExUnit.Case
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
 
   alias RouteShield.Plug
   alias RouteShield.Storage.ETS
@@ -36,7 +37,7 @@ defmodule RouteShield.PlugTest do
   end
 
   describe "call/2" do
-    test "allows request when no rules exist", %{route: route} do
+    test "allows request when no rules exist", %{route: _route} do
       conn =
         :get
         |> conn("/api/users")
@@ -251,7 +252,7 @@ defmodule RouteShield.PlugTest do
       assert conn_after.state != :sent
     end
 
-    test "matches routes with path parameters", %{route: route} do
+    test "matches routes with path parameters", %{route: _route} do
       # Store a route with path parameter
       param_route = %Route{
         id: 2,

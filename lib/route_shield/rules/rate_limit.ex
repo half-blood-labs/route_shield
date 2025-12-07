@@ -3,8 +3,6 @@ defmodule RouteShield.Rules.RateLimit do
   Token bucket rate limiting implementation (per-IP).
   """
 
-  alias RouteShield.Storage.ETS
-
   @rate_limit_buckets_table :route_shield_rate_limit_buckets
 
   def init do

@@ -7,8 +7,6 @@ defmodule RouteShield.DashboardLive do
   alias RouteShield.Storage.ETS
   alias RouteShield.Storage.Cache
   alias RouteShield.Schema.{Route, Rule, RateLimit, IpFilter}
-  import Ecto.Query
-  import Phoenix.LiveView.Helpers
 
   def mount(_params, _session, socket) do
     repo = get_repo()
@@ -81,12 +79,12 @@ defmodule RouteShield.DashboardLive do
     }
 
     case RateLimit.changeset(%RateLimit{}, attrs) |> socket.assigns.repo.insert() do
-      {:ok, rate_limit} ->
+      {:ok, _rate_limit} ->
         Cache.refresh_rule(socket.assigns.repo, rule_id)
         send(self(), {:refresh_route, socket.assigns.selected_route.id})
         {:noreply, put_flash(socket, :info, "Rate limit created successfully")}
 
-      {:error, changeset} ->
+      {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Failed to create rate limit")}
     end
   end

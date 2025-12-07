@@ -46,7 +46,7 @@ defmodule RouteShield.Storage.ETS do
   def list_routes do
     @routes_table
     |> :ets.tab2list()
-    |> Enum.map(fn {key, route} -> route end)
+    |> Enum.map(fn {_key, route} -> route end)
     |> Enum.uniq_by(&{&1.method, &1.path_pattern})
   end
 

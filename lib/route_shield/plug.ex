@@ -43,7 +43,7 @@ defmodule RouteShield.Plug do
     end
   end
 
-  defp find_route_by_matching(method, path, conn) do
+  defp find_route_by_matching(method, path, _conn) do
     all_routes = ETS.list_routes()
 
     matching_route =
@@ -67,7 +67,7 @@ defmodule RouteShield.Plug do
     Regex.match?(pattern_regex, path)
   end
 
-  defp apply_rules(conn, rules) when length(rules) == 0 do
+  defp apply_rules(_conn, rules) when length(rules) == 0 do
     {:ok, :allowed}
   end
 
@@ -89,7 +89,7 @@ defmodule RouteShield.Plug do
     end
   end
 
-  defp check_rate_limit(conn, rule, ip_address) do
+  defp check_rate_limit(_conn, rule, ip_address) do
     case ETS.get_rate_limit_for_rule(rule.id) do
       {:ok, rate_limit_config} ->
         RateLimit.check_rate_limit(ip_address, rule.id, rate_limit_config)

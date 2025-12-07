@@ -104,7 +104,6 @@ defmodule Mix.Tasks.RouteShield.Install do
   """
 
   def run(_args) do
-    app = Mix.Project.config()[:app]
     repo = get_repo()
 
     if File.exists?("priv/repo/migrations") do

@@ -3,7 +3,6 @@ defmodule RouteShield.RouteDiscoveryTest do
 
   alias RouteShield.RouteDiscovery
   alias RouteShield.Storage.ETS
-  alias RouteShield.Schema.Route
 
   setup do
     ETS.clear_routes()

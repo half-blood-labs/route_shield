@@ -2,7 +2,7 @@ defmodule RouteShield.Storage.CacheTest do
   use ExUnit.Case
 
   alias RouteShield.Storage.{Cache, ETS}
-  alias RouteShield.Schema.{Rule, RateLimit, IpFilter, TimeRestriction}
+  alias RouteShield.Schema.Rule
 
   setup do
     ETS.clear_all()
