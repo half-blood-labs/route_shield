@@ -23,6 +23,7 @@ defmodule RouteShield.Storage.ETS do
   def store_route(route) do
     key = {route.method, route.path_pattern}
     :ets.insert(@routes_table, {key, route})
+
     if Map.has_key?(route, :id) and route.id do
       :ets.insert(@routes_table, {route.id, route})
     end

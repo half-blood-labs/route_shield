@@ -64,7 +64,11 @@ defmodule RouteShield.DashboardLive do
     {:noreply, socket}
   end
 
-  def handle_event("create_rate_limit", %{"rule_id" => rule_id, "requests" => requests, "window" => window}, socket) do
+  def handle_event(
+        "create_rate_limit",
+        %{"rule_id" => rule_id, "requests" => requests, "window" => window},
+        socket
+      ) do
     rule_id = String.to_integer(rule_id)
     requests = String.to_integer(requests)
     window = String.to_integer(window)
@@ -87,7 +91,11 @@ defmodule RouteShield.DashboardLive do
     end
   end
 
-  def handle_event("create_ip_filter", %{"rule_id" => rule_id, "ip_address" => ip, "type" => type}, socket) do
+  def handle_event(
+        "create_ip_filter",
+        %{"rule_id" => rule_id, "ip_address" => ip, "type" => type},
+        socket
+      ) do
     rule_id = String.to_integer(rule_id)
     type_atom = String.to_existing_atom(type)
 

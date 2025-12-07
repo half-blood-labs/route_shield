@@ -6,11 +6,13 @@ defmodule RouteShield.Rules.RateLimitTest do
   setup do
     # Clean up buckets before each test by deleting the table and recreating it
     table = :route_shield_rate_limit_buckets
+
     try do
       :ets.delete(table)
     rescue
       ArgumentError -> :ok
     end
+
     RateLimit.init()
     :ok
   end
@@ -59,12 +61,14 @@ defmodule RouteShield.Rules.RateLimitTest do
       # Exhaust limit for IP1
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip1, rule_id, config)
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip1, rule_id, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip1, rule_id, config)
 
       # IP2 should still have full limit
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip2, rule_id, config)
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip2, rule_id, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip2, rule_id, config)
     end
@@ -78,12 +82,14 @@ defmodule RouteShield.Rules.RateLimitTest do
       # Exhaust limit for rule1
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id1, config)
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id1, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip, rule_id1, config)
 
       # Rule2 should still have full limit
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id2, config)
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id2, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip, rule_id2, config)
     end
@@ -96,6 +102,7 @@ defmodule RouteShield.Rules.RateLimitTest do
       # Exhaust limit
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id, config)
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip, rule_id, config)
 
@@ -112,6 +119,7 @@ defmodule RouteShield.Rules.RateLimitTest do
       config = %{requests_per_window: 1, window_seconds: 1}
 
       assert {:ok, :allowed} = RateLimit.check_rate_limit(ip, rule_id, config)
+
       assert {:error, :rate_limit_exceeded} =
                RateLimit.check_rate_limit(ip, rule_id, config)
 

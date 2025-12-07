@@ -6,10 +6,10 @@ defmodule RouteShield.Schema.RateLimit do
   import Ecto.Changeset
 
   schema "route_shield_rate_limits" do
-    field :rule_id, :id
-    field :requests_per_window, :integer
-    field :window_seconds, :integer
-    field :enabled, :boolean, default: true
+    field(:rule_id, :id)
+    field(:requests_per_window, :integer)
+    field(:window_seconds, :integer)
+    field(:enabled, :boolean, default: true)
 
     timestamps()
   end

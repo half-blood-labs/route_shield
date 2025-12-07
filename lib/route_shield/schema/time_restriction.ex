@@ -6,12 +6,12 @@ defmodule RouteShield.Schema.TimeRestriction do
   import Ecto.Changeset
 
   schema "route_shield_time_restrictions" do
-    field :rule_id, :id
-    field :start_time, :time
-    field :end_time, :time
-    field :days_of_week, {:array, :integer}
-    field :timezone, :string, default: "UTC"
-    field :enabled, :boolean, default: true
+    field(:rule_id, :id)
+    field(:start_time, :time)
+    field(:end_time, :time)
+    field(:days_of_week, {:array, :integer})
+    field(:timezone, :string, default: "UTC")
+    field(:enabled, :boolean, default: true)
 
     timestamps()
   end

@@ -6,11 +6,11 @@ defmodule RouteShield.Schema.IpFilter do
   import Ecto.Changeset
 
   schema "route_shield_ip_filters" do
-    field :rule_id, :id
-    field :ip_address, :string
-    field :type, Ecto.Enum, values: [:whitelist, :blacklist]
-    field :enabled, :boolean, default: true
-    field :description, :string
+    field(:rule_id, :id)
+    field(:ip_address, :string)
+    field(:type, Ecto.Enum, values: [:whitelist, :blacklist])
+    field(:enabled, :boolean, default: true)
+    field(:description, :string)
 
     timestamps()
   end

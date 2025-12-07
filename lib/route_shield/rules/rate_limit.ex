@@ -27,7 +27,14 @@ defmodule RouteShield.Rules.RateLimit do
         {:ok, :allowed}
 
       [{^key, tokens, last_refill, window_seconds}] ->
-        tokens_after_refill = refill_tokens(tokens, last_refill, now, window_seconds, rate_limit_config.requests_per_window)
+        tokens_after_refill =
+          refill_tokens(
+            tokens,
+            last_refill,
+            now,
+            window_seconds,
+            rate_limit_config.requests_per_window
+          )
 
         if tokens_after_refill >= 1 do
           new_tokens = tokens_after_refill - 1
@@ -41,6 +48,7 @@ defmodule RouteShield.Rules.RateLimit do
 
   defp create_bucket(key, rate_limit_config, now) do
     initial_tokens = rate_limit_config.requests_per_window - 1
+
     :ets.insert(@rate_limit_buckets_table, {
       key,
       initial_tokens,
@@ -66,8 +74,7 @@ defmodule RouteShield.Rules.RateLimit do
     @rate_limit_buckets_table
     |> :ets.select([
       {{:"$1", :"$2", :"$3", :_},
-       [{:==, {:element, 1, :"$1"}, rule_id}, {:<, :"$3", cutoff_time}],
-       [:"$1"]}
+       [{:==, {:element, 1, :"$1"}, rule_id}, {:<, :"$3", cutoff_time}], [:"$1"]}
     ])
     |> Enum.each(fn key -> :ets.delete(@rate_limit_buckets_table, key) end)
   end

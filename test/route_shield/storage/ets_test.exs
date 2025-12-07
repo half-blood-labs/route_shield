@@ -320,10 +320,30 @@ defmodule RouteShield.Storage.ETSTest do
 
   describe "clear_all/0" do
     test "clears all ETS tables" do
-      route = %Route{id: 1, method: "GET", path_pattern: "/test", discovered_at: DateTime.utc_now()}
+      route = %Route{
+        id: 1,
+        method: "GET",
+        path_pattern: "/test",
+        discovered_at: DateTime.utc_now()
+      }
+
       rule = %Rule{id: 1, route_id: 1, enabled: true, priority: 5}
-      rate_limit = %RateLimit{id: 1, rule_id: 1, requests_per_window: 100, window_seconds: 60, enabled: true}
-      ip_filter = %IpFilter{id: 1, rule_id: 1, ip_address: "192.168.1.100", type: :blacklist, enabled: true}
+
+      rate_limit = %RateLimit{
+        id: 1,
+        rule_id: 1,
+        requests_per_window: 100,
+        window_seconds: 60,
+        enabled: true
+      }
+
+      ip_filter = %IpFilter{
+        id: 1,
+        rule_id: 1,
+        ip_address: "192.168.1.100",
+        type: :blacklist,
+        enabled: true
+      }
 
       ETS.store_route(route)
       ETS.store_rule(rule)

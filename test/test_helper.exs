@@ -4,11 +4,13 @@ ExUnit.start()
 try do
   RouteShield.Storage.ETS.start_link()
 rescue
-  ArgumentError -> :ok  # Tables already exist
+  # Tables already exist
+  ArgumentError -> :ok
 end
 
 try do
   RouteShield.Rules.RateLimit.init()
 rescue
-  ArgumentError -> :ok  # Table already exists
+  # Table already exists
+  ArgumentError -> :ok
 end

@@ -6,10 +6,10 @@ defmodule RouteShield.Schema.Rule do
   import Ecto.Changeset
 
   schema "route_shield_rules" do
-    field :route_id, :id
-    field :enabled, :boolean, default: true
-    field :priority, :integer, default: 0
-    field :description, :string
+    field(:route_id, :id)
+    field(:enabled, :boolean, default: true)
+    field(:priority, :integer, default: 0)
+    field(:description, :string)
 
     timestamps()
   end

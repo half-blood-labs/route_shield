@@ -12,6 +12,7 @@ defmodule RouteShield.PlugTest do
 
     # Clean up rate limit buckets
     table = :route_shield_rate_limit_buckets
+
     try do
       :ets.delete_all_objects(table)
     rescue
@@ -320,7 +321,8 @@ defmodule RouteShield.PlugTest do
 
       ip_filter = %IpFilter{
         id: 1,
-        rule_id: rule2.id, # Higher priority rule
+        # Higher priority rule
+        rule_id: rule2.id,
         ip_address: "192.168.1.100",
         type: :blacklist,
         enabled: true

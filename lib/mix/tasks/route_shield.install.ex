@@ -125,13 +125,16 @@ defmodule Mix.Tasks.RouteShield.Install do
     app = config[:app]
 
     case Application.get_env(app, :ecto_repos, []) do
-      [repo | _] -> repo
+      [repo | _] ->
+        repo
+
       [] ->
         Mix.shell().error("""
         No Ecto repo found. Please configure your repo in config/config.exs:
 
             config :#{app}, ecto_repos: [YourApp.Repo]
         """)
+
         Mix.raise("No Ecto repo configured")
     end
   end

@@ -50,17 +50,17 @@ defmodule RouteShield.Storage.Cache do
   end
 
   defp refresh_rate_limits_for_rule(repo, rule_id) do
-    repo.all(from rl in RateLimit, where: rl.rule_id == ^rule_id)
+    repo.all(from(rl in RateLimit, where: rl.rule_id == ^rule_id))
     |> Enum.each(&ETS.store_rate_limit/1)
   end
 
   defp refresh_ip_filters_for_rule(repo, rule_id) do
-    repo.all(from ipf in IpFilter, where: ipf.rule_id == ^rule_id)
+    repo.all(from(ipf in IpFilter, where: ipf.rule_id == ^rule_id))
     |> Enum.each(&ETS.store_ip_filter/1)
   end
 
   defp refresh_time_restrictions_for_rule(repo, rule_id) do
-    repo.all(from tr in TimeRestriction, where: tr.rule_id == ^rule_id)
+    repo.all(from(tr in TimeRestriction, where: tr.rule_id == ^rule_id))
     |> Enum.each(&ETS.store_time_restriction/1)
   end
 end

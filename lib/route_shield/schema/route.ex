@@ -6,12 +6,12 @@ defmodule RouteShield.Schema.Route do
   import Ecto.Changeset
 
   schema "route_shield_routes" do
-    field :method, :string
-    field :path_pattern, :string
-    field :controller, :string
-    field :action, :string
-    field :helper, :string
-    field :discovered_at, :utc_datetime
+    field(:method, :string)
+    field(:path_pattern, :string)
+    field(:controller, :string)
+    field(:action, :string)
+    field(:helper, :string)
+    field(:discovered_at, :utc_datetime)
 
     timestamps()
   end

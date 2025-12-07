@@ -63,9 +63,11 @@ defmodule RouteShield.Rules.IpFilter do
         case {parse_ip(ip_str), Integer.parse(mask_str)} do
           {{:ok, ip}, {mask, ""}} when mask >= 0 and mask <= 32 ->
             {:ok, {ip, mask}}
+
           _ ->
             :error
         end
+
       _ ->
         :error
     end

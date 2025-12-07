@@ -17,6 +17,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "blocks IP when it's in blacklist" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -33,6 +34,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "allows IP when it's not in blacklist" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -48,6 +50,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "allows IP when it's in whitelist" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -63,6 +66,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "blocks IP when it's not in whitelist but whitelist exists" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -79,6 +83,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "blacklist takes precedence over whitelist" do
       rule_id = 1
+
       blacklist_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -105,6 +110,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "supports CIDR notation for blacklist" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -131,6 +137,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "supports CIDR notation for whitelist" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -152,6 +159,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "handles multiple CIDR ranges" do
       rule_id = 1
+
       filter1 = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -182,6 +190,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "ignores disabled filters" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -198,6 +207,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "handles invalid IP addresses gracefully" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -215,6 +225,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "handles invalid CIDR notation gracefully" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -231,6 +242,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "handles /32 CIDR (single IP)" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
@@ -249,6 +261,7 @@ defmodule RouteShield.Rules.IpFilterTest do
 
     test "handles /0 CIDR (all IPs)" do
       rule_id = 1
+
       ip_filter = %IpFilterSchema{
         id: 1,
         rule_id: rule_id,
