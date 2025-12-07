@@ -58,13 +58,17 @@ pipeline :api do
 end
 ```
 
-### 4. Run Migrations
+### 4. Install Migrations
+
+Generate and run the RouteShield migration:
 
 ```bash
-mix ecto.gen.migration add_route_shield_tables
-# Copy migrations from route_shield/priv/repo/migrations/
+mix route_shield.install
 mix ecto.migrate
 ```
+
+The `mix route_shield.install` command will generate a migration file in your
+project's `priv/repo/migrations/` directory with all RouteShield tables.
 
 ### 5. Discover Routes
 

@@ -17,7 +17,6 @@ defmodule RouteShield.RouteDiscovery do
     if function_exported?(router_module, :__route_shield_routes__, 0) do
       router_module.__route_shield_routes__()
     else
-      # Fallback: try to get routes using Phoenix.Router
       try do
         router_module
         |> Phoenix.Router.routes()

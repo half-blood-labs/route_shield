@@ -8,10 +8,8 @@ defmodule RouteShield.Storage.Cache do
   alias RouteShield.Schema.{Rule, RateLimit, IpFilter, TimeRestriction}
 
   def refresh_all(repo) do
-    # Clear existing cache
     ETS.clear_all()
 
-    # Load routes (these are populated at compile-time, but we refresh rules)
     refresh_rules(repo)
     refresh_rate_limits(repo)
     refresh_ip_filters(repo)
@@ -40,15 +38,12 @@ defmodule RouteShield.Storage.Cache do
     |> Enum.each(&ETS.store_time_restriction/1)
   end
 
-  # Refresh specific rule and its related data
   def refresh_rule(repo, rule_id) do
-    # Refresh rule
     case repo.get(Rule, rule_id) do
       nil -> :ok
       rule -> ETS.store_rule(rule)
     end
 
-    # Refresh related data
     refresh_rate_limits_for_rule(repo, rule_id)
     refresh_ip_filters_for_rule(repo, rule_id)
     refresh_time_restrictions_for_rule(repo, rule_id)

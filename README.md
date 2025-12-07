@@ -167,12 +167,15 @@ defmodule MyApp.Router do
 end
 ```
 
-### 2. Run Migrations
+### 2. Install Migrations
 
 ```bash
-mix ecto.gen.migration add_route_shield_tables
+mix route_shield.install
 mix ecto.migrate
 ```
+
+The `mix route_shield.install` command generates a migration file in your
+project's `priv/repo/migrations/` directory with all RouteShield tables.
 
 ### 3. Configure
 

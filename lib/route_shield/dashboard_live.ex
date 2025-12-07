@@ -12,10 +12,8 @@ defmodule RouteShield.DashboardLive do
 
   def mount(_params, _session, socket) do
     repo = get_repo()
-    # Load routes from database (they have IDs)
     routes = repo.all(Route) |> Enum.sort_by(&{&1.method, &1.path_pattern})
 
-    # Also ensure they're in ETS
     Enum.each(routes, &ETS.store_route/1)
 
     socket =

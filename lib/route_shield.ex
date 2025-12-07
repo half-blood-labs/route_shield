@@ -9,11 +9,8 @@ defmodule RouteShield do
   ```elixir
   defmodule MyApp.Router do
     use MyApp, :router
-    use RouteShield.Plug  # Add this
+    use RouteShield.Plug
 
-    # ... your routes ...
-
-    # Add dashboard route
     live "/route_shield", RouteShield.DashboardLive
   end
   ```
@@ -23,7 +20,6 @@ defmodule RouteShield do
   ```elixir
   pipeline :api do
     plug RouteShield.Plug
-    # ... other plugs ...
   end
   ```
 
@@ -37,7 +33,6 @@ defmodule RouteShield do
   4. Run migrations and discover routes:
 
   ```elixir
-  # In your application startup or a mix task
   RouteShield.discover_routes(MyApp.Router, MyApp.Repo)
   ```
   """

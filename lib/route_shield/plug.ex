@@ -14,38 +14,29 @@ defmodule RouteShield.Plug do
     method = conn.method
     path = conn.request_path
 
-    # Try to find matching route
     case find_matching_route(method, path, conn) do
       {:ok, route} ->
-        # Store route in assigns for later use
         conn = assign(conn, :route_shield_route, route)
 
-        # Get route ID from route struct (should have ID if stored from DB)
         route_id = Map.get(route, :id)
 
         if route_id do
-          # Get rules for this route
           rules = ETS.get_rules_for_route(route_id)
 
-          # Apply rules
           case apply_rules(conn, rules) do
             {:ok, :allowed} -> conn
             {:error, reason} -> block_request(conn, reason)
           end
         else
-          # No route ID yet, allow through (route not in DB)
           conn
         end
 
       {:error, :not_found} ->
-        # Route not found in our system, allow through
         conn
     end
   end
-  end
 
   defp find_matching_route(method, path, conn) do
-    # First try exact match
     case ETS.get_route(method, path) do
       {:ok, route} -> {:ok, route}
       {:error, :not_found} -> find_route_by_matching(method, path, conn)
@@ -53,7 +44,6 @@ defmodule RouteShield.Plug do
   end
 
   defp find_route_by_matching(method, path, conn) do
-    # Try to match using pattern matching
     all_routes = ETS.list_routes()
 
     matching_route =
@@ -69,7 +59,6 @@ defmodule RouteShield.Plug do
   end
 
   defp path_matches?(pattern, path) do
-    # Simple pattern matching for dynamic routes
     pattern_regex =
       pattern
       |> String.replace(~r/:(\w+)/, "[^/]+")
@@ -94,7 +83,6 @@ defmodule RouteShield.Plug do
   end
 
   defp check_rule(conn, rule, ip_address) do
-    # Check IP filters first
     case IpFilter.check_ip_access(ip_address, rule.id) do
       {:error, reason} -> {:error, reason}
       {:ok, :allowed} -> check_rate_limit(conn, rule, ip_address)
@@ -112,7 +100,6 @@ defmodule RouteShield.Plug do
   end
 
   defp get_client_ip(conn) do
-    # Check various headers for real IP (behind proxy/load balancer)
     conn
     |> get_req_header("x-forwarded-for")
     |> List.first()

@@ -3,6 +3,7 @@ defmodule RouteShield.Rules.IpFilter do
   IP whitelist/blacklist filtering with CIDR notation support.
   """
 
+  import Bitwise
   alias RouteShield.Storage.ETS
 
   def check_ip_access(ip_address, rule_id) do
@@ -14,11 +15,9 @@ defmodule RouteShield.Rules.IpFilter do
       whitelist_filters = Enum.filter(ip_filters, &(&1.type == :whitelist))
       blacklist_filters = Enum.filter(ip_filters, &(&1.type == :blacklist))
 
-      # Check blacklist first
       if Enum.any?(blacklist_filters, &ip_matches?(&1.ip_address, ip_address)) do
         {:error, :ip_blacklisted}
       else
-        # If whitelist exists, IP must be in whitelist
         if Enum.empty?(whitelist_filters) do
           {:ok, :allowed}
         else
@@ -34,15 +33,12 @@ defmodule RouteShield.Rules.IpFilter do
 
   defp ip_matches?(filter_ip, request_ip) do
     cond do
-      # CIDR notation
       String.contains?(filter_ip, "/") ->
         matches_cidr?(filter_ip, request_ip)
 
-      # Exact match
       filter_ip == request_ip ->
         true
 
-      # No match
       true ->
         false
     end

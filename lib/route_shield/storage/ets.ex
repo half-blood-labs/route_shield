@@ -11,7 +11,6 @@ defmodule RouteShield.Storage.ETS do
   @time_restrictions_table :route_shield_time_restrictions
 
   def start_link do
-    # Create ETS tables
     :ets.new(@routes_table, [:named_table, :set, :public, read_concurrency: true])
     :ets.new(@rules_table, [:named_table, :bag, :public, read_concurrency: true])
     :ets.new(@rate_limits_table, [:named_table, :bag, :public, read_concurrency: true])
@@ -21,10 +20,8 @@ defmodule RouteShield.Storage.ETS do
     :ok
   end
 
-  # Route operations
   def store_route(route) do
     key = {route.method, route.path_pattern}
-    # Store both by key and by ID if available
     :ets.insert(@routes_table, {key, route})
     if Map.has_key?(route, :id) and route.id do
       :ets.insert(@routes_table, {route.id, route})
@@ -56,7 +53,6 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@routes_table)
   end
 
-  # Rule operations
   def store_rule(rule) do
     :ets.insert(@rules_table, {rule.route_id, rule})
   end
@@ -73,7 +69,6 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@rules_table)
   end
 
-  # Rate limit operations
   def store_rate_limit(rate_limit) do
     :ets.insert(@rate_limits_table, {rate_limit.rule_id, rate_limit})
   end
@@ -89,7 +84,6 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@rate_limits_table)
   end
 
-  # IP filter operations
   def store_ip_filter(ip_filter) do
     :ets.insert(@ip_filters_table, {ip_filter.rule_id, ip_filter})
   end
@@ -105,7 +99,6 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@ip_filters_table)
   end
 
-  # Time restriction operations
   def store_time_restriction(time_restriction) do
     :ets.insert(@time_restrictions_table, {time_restriction.rule_id, time_restriction})
   end
@@ -121,7 +114,6 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@time_restrictions_table)
   end
 
-  # Clear all tables
   def clear_all do
     clear_routes()
     clear_rules()
