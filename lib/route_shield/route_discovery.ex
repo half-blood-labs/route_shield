@@ -1,4 +1,4 @@
- defmodule RouteShield.RouteDiscovery do
+defmodule RouteShield.RouteDiscovery do
   @moduledoc """
   Handles route discovery and storage in ETS and database.
   """
