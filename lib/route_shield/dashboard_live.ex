@@ -4,10 +4,20 @@ defmodule RouteShield.DashboardLive do
   """
 
   use Phoenix.LiveView, layout: false
-  import Ecto.Query
+  import Ecto.Query, only: [from: 2]
   alias RouteShield.Storage.ETS
   alias RouteShield.Storage.Cache
-  alias RouteShield.Schema.{Route, Rule, RateLimit, IpFilter}
+
+  alias RouteShield.Schema.{
+    Route,
+    Rule,
+    RateLimit,
+    IpFilter,
+    TimeRestriction,
+    ConcurrentLimit,
+    CustomResponse,
+    GlobalIpBlacklist
+  }
 
   def mount(_params, _session, socket) do
     repo = get_repo()
@@ -123,7 +133,12 @@ defmodule RouteShield.DashboardLive do
     existing_rules = ETS.get_rules_for_route(route_id)
 
     if length(existing_rules) > 0 do
-      {:noreply, put_flash(socket, :error, "A rule already exists for this route. Delete it first to create a new one.")}
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         "A rule already exists for this route. Delete it first to create a new one."
+       )}
     else
       attrs = %{
         route_id: route_id,
@@ -243,15 +258,225 @@ defmodule RouteShield.DashboardLive do
         ETS.get_ip_filters_for_rule(rule.id)
       end)
 
+    time_restrictions =
+      rules
+      |> Enum.flat_map(fn rule ->
+        ETS.get_time_restrictions_for_rule(rule.id)
+      end)
+
+    concurrent_limits =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_concurrent_limit_for_rule(rule.id) do
+          {:ok, cl} -> cl
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    custom_responses =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_custom_response_for_rule(rule.id) do
+          {:ok, cr} -> cr
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
     socket =
       socket
       |> assign(:selected_route, route)
       |> assign(:rules, rules)
       |> assign(:rate_limits, rate_limits)
       |> assign(:ip_filters, ip_filters)
+      |> assign(:time_restrictions, time_restrictions)
+      |> assign(:concurrent_limits, concurrent_limits)
+      |> assign(:custom_responses, custom_responses)
 
     {:noreply, socket}
   end
+
+  def handle_event("toggle_global_blacklist", _params, socket) do
+    {:noreply, update(socket, :show_global_blacklist, &(!&1))}
+  end
+
+  def handle_event(
+        "create_global_blacklist",
+        %{"ip_address" => ip_address, "description" => description},
+        socket
+      ) do
+    attrs = %{
+      ip_address: ip_address,
+      description: description,
+      enabled: true
+    }
+
+    case GlobalIpBlacklist.changeset(%GlobalIpBlacklist{}, attrs)
+         |> socket.assigns.repo.insert() do
+      {:ok, _entry} ->
+        Cache.refresh_all(socket.assigns.repo)
+        global_blacklist = socket.assigns.repo.all(GlobalIpBlacklist) |> Enum.filter(& &1.enabled)
+
+        {:noreply,
+         put_flash(
+           socket |> assign(:global_blacklist, global_blacklist),
+           :info,
+           "Global blacklist entry created"
+         )}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Failed to create global blacklist entry")}
+    end
+  end
+
+  def handle_event("delete_global_blacklist", %{"id" => id}, socket) do
+    case socket.assigns.repo.get(GlobalIpBlacklist, id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Entry not found")}
+
+      entry ->
+        case socket.assigns.repo.delete(entry) do
+          {:ok, _} ->
+            Cache.refresh_all(socket.assigns.repo)
+
+            global_blacklist =
+              socket.assigns.repo.all(GlobalIpBlacklist) |> Enum.filter(& &1.enabled)
+
+            {:noreply,
+             put_flash(
+               socket |> assign(:global_blacklist, global_blacklist),
+               :info,
+               "Global blacklist entry deleted"
+             )}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to delete entry")}
+        end
+    end
+  end
+
+  def handle_event(
+        "create_time_restriction",
+        %{
+          "rule_id" => rule_id,
+          "start_time" => start_time,
+          "end_time" => end_time,
+          "days" => days
+        },
+        socket
+      ) do
+    rule_id = String.to_integer(rule_id)
+
+    days_list =
+      if days == "", do: [], else: String.split(days, ",") |> Enum.map(&String.to_integer/1)
+
+    attrs = %{
+      rule_id: rule_id,
+      start_time: parse_time(start_time),
+      end_time: parse_time(end_time),
+      days_of_week: days_list,
+      enabled: true
+    }
+
+    case TimeRestriction.changeset(%TimeRestriction{}, attrs) |> socket.assigns.repo.insert() do
+      {:ok, _} ->
+        Cache.refresh_rule(socket.assigns.repo, rule_id)
+        send(self(), {:refresh_route, socket.assigns.selected_route.id})
+        {:noreply, put_flash(socket, :info, "Time restriction created")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to create time restriction")}
+    end
+  end
+
+  def handle_event(
+        "create_concurrent_limit",
+        %{"rule_id" => rule_id, "max_concurrent" => max_concurrent},
+        socket
+      ) do
+    rule_id = String.to_integer(rule_id)
+    max_concurrent = String.to_integer(max_concurrent)
+
+    attrs = %{
+      rule_id: rule_id,
+      max_concurrent: max_concurrent,
+      enabled: true
+    }
+
+    case ConcurrentLimit.changeset(%ConcurrentLimit{}, attrs) |> socket.assigns.repo.insert() do
+      {:ok, _} ->
+        Cache.refresh_rule(socket.assigns.repo, rule_id)
+        send(self(), {:refresh_route, socket.assigns.selected_route.id})
+        {:noreply, put_flash(socket, :info, "Concurrent limit created")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to create concurrent limit")}
+    end
+  end
+
+  def handle_event(
+        "create_custom_response",
+        %{
+          "rule_id" => rule_id,
+          "status_code" => status_code,
+          "message" => message,
+          "content_type" => content_type
+        },
+        socket
+      ) do
+    rule_id = String.to_integer(rule_id)
+    status_code = String.to_integer(status_code)
+
+    attrs = %{
+      rule_id: rule_id,
+      status_code: status_code,
+      message: message,
+      content_type: content_type,
+      enabled: true
+    }
+
+    case CustomResponse.changeset(%CustomResponse{}, attrs) |> socket.assigns.repo.insert() do
+      {:ok, _} ->
+        Cache.refresh_rule(socket.assigns.repo, rule_id)
+        send(self(), {:refresh_route, socket.assigns.selected_route.id})
+        {:noreply, put_flash(socket, :info, "Custom response created")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to create custom response")}
+    end
+  end
+
+  defp parse_time(time_string) when is_binary(time_string) do
+    case Time.from_iso8601(time_string) do
+      {:ok, time} -> time
+      _ -> nil
+    end
+  end
+
+  defp parse_time(_), do: nil
+
+  defp format_time(time) when not is_nil(time) do
+    Time.to_string(time)
+  end
+
+  defp format_time(_), do: ""
+
+  defp format_days(days) when is_list(days) do
+    day_names = %{
+      1 => "Mon",
+      2 => "Tue",
+      3 => "Wed",
+      4 => "Thu",
+      5 => "Fri",
+      6 => "Sat",
+      7 => "Sun"
+    }
+
+    days |> Enum.map(&Map.get(day_names, &1, &1)) |> Enum.join(", ")
+  end
+
+  defp format_days(_), do: ""
 
   defp get_repo do
     Application.get_env(:route_shield, :repo) ||
@@ -289,10 +514,80 @@ defmodule RouteShield.DashboardLive do
       <!-- Header -->
       <header class="bg-white shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 class="text-3xl font-bold text-gray-900">RouteShield Dashboard</h1>
-          <p class="mt-2 text-sm text-gray-600">Manage route protection and access rules</p>
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900">RouteShield Dashboard</h1>
+              <p class="mt-2 text-sm text-gray-600">Manage route protection and access rules</p>
+            </div>
+            <button
+              phx-click="toggle_global_blacklist"
+              class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <%= if @show_global_blacklist, do: "Hide", else: "Show" %> Global Blacklist
+            </button>
+          </div>
         </div>
       </header>
+
+      <!-- Global Blacklist Section -->
+      <%= if @show_global_blacklist do %>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-semibold text-gray-900">Global IP Blacklist</h2>
+              <p class="text-sm text-gray-500 mt-1">Applies to all routes</p>
+            </div>
+            <div class="px-6 py-4">
+              <form phx-submit="create_global_blacklist" class="mb-4">
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    name="ip_address"
+                    placeholder="IP or CIDR (e.g., 192.168.1.0/24)"
+                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    required
+                  />
+                  <input
+                    type="text"
+                    name="description"
+                    placeholder="Description (optional)"
+                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                  <button
+                    type="submit"
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+                  >
+                    Add to Blacklist
+                  </button>
+                </div>
+              </form>
+              <div class="space-y-2">
+                <%= for entry <- @global_blacklist do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                    <div>
+                      <span class="font-mono text-sm"><%= entry.ip_address %></span>
+                      <%= if entry.description do %>
+                        <p class="text-xs text-gray-500 mt-1"><%= entry.description %></p>
+                      <% end %>
+                    </div>
+                    <button
+                      phx-click="delete_global_blacklist"
+                      phx-value-id={entry.id}
+                      class="text-red-600 hover:text-red-900 text-sm font-medium"
+                      onclick="return confirm('Are you sure?')"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                <% end %>
+                <%= if length(@global_blacklist) == 0 do %>
+                  <p class="text-sm text-gray-500 text-center py-4">No global blacklist entries</p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
 
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -503,6 +798,137 @@ defmodule RouteShield.DashboardLive do
                               </div>
                             </form>
                           </div>
+
+                          <!-- Time Restrictions -->
+                          <div class="mt-3">
+                            <p class="text-xs font-medium text-gray-700 mb-2">Time Restrictions</p>
+                            <%= if Enum.any?(@time_restrictions, &(&1.rule_id == rule.id)) do %>
+                              <div class="space-y-1 mb-2">
+                                <%= for tr <- Enum.filter(@time_restrictions, &(&1.rule_id == rule.id)) do %>
+                                  <div class="p-2 bg-purple-50 rounded text-xs">
+                                    <%= if tr.start_time && tr.end_time do %>
+                                      <span class="font-medium">Time:</span> <%= format_time(tr.start_time) %> - <%= format_time(tr.end_time) %>
+                                    <% end %>
+                                    <%= if tr.days_of_week && length(tr.days_of_week) > 0 do %>
+                                      <span class="ml-2">
+                                        <span class="font-medium">Days:</span> <%= format_days(tr.days_of_week) %>
+                                      </span>
+                                    <% end %>
+                                  </div>
+                                <% end %>
+                              </div>
+                            <% end %>
+                            <form phx-submit="create_time_restriction" class="text-xs">
+                              <input type="hidden" name="rule_id" value={rule.id} />
+                              <div class="grid grid-cols-3 gap-2">
+                                <input
+                                  type="time"
+                                  name="start_time"
+                                  placeholder="Start"
+                                  class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                />
+                                <input
+                                  type="time"
+                                  name="end_time"
+                                  placeholder="End"
+                                  class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  name="days"
+                                  placeholder="Days (1-7, comma-separated)"
+                                  class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                class="mt-2 w-full px-3 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 rounded"
+                              >
+                                Add Time Restriction
+                              </button>
+                            </form>
+                          </div>
+
+                          <!-- Concurrent Limits -->
+                          <%= if concurrent_limit = Enum.find(@concurrent_limits, &(&1.rule_id == rule.id)) do %>
+                            <div class="mt-3 p-3 bg-yellow-50 rounded">
+                              <p class="text-xs font-medium text-yellow-900 mb-1">Concurrent Limit</p>
+                              <p class="text-sm text-yellow-700">
+                                Max <%= concurrent_limit.max_concurrent %> concurrent requests per IP
+                              </p>
+                            </div>
+                          <% else %>
+                            <form phx-submit="create_concurrent_limit" class="mt-3">
+                              <input type="hidden" name="rule_id" value={rule.id} />
+                              <div class="flex gap-2">
+                                <input
+                                  type="number"
+                                  name="max_concurrent"
+                                  placeholder="Max concurrent"
+                                  min="1"
+                                  class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                  required
+                                />
+                                <button
+                                  type="submit"
+                                  class="px-4 py-2 text-sm font-medium text-yellow-600 hover:text-yellow-700"
+                                >
+                                  Add Concurrent Limit
+                                </button>
+                              </div>
+                            </form>
+                          <% end %>
+
+                          <!-- Custom Response -->
+                          <%= if custom_response = Enum.find(@custom_responses, &(&1.rule_id == rule.id)) do %>
+                            <div class="mt-3 p-3 bg-indigo-50 rounded">
+                              <p class="text-xs font-medium text-indigo-900 mb-1">Custom Response</p>
+                              <p class="text-sm text-indigo-700">
+                                Status: <%= custom_response.status_code %>, Type: <%= custom_response.content_type %>
+                              </p>
+                              <%= if custom_response.message do %>
+                                <p class="text-xs text-indigo-600 mt-1"><%= custom_response.message %></p>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <form phx-submit="create_custom_response" class="mt-3">
+                              <input type="hidden" name="rule_id" value={rule.id} />
+                              <div class="space-y-2">
+                                <div class="flex gap-2">
+                                  <input
+                                    type="number"
+                                    name="status_code"
+                                    placeholder="Status Code"
+                                    min="400"
+                                    max="599"
+                                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    required
+                                  />
+                                  <select
+                                    name="content_type"
+                                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    required
+                                  >
+                                    <option value="application/json">JSON</option>
+                                    <option value="text/html">HTML</option>
+                                    <option value="text/plain">Plain Text</option>
+                                  </select>
+                                </div>
+                                <input
+                                  type="text"
+                                  name="message"
+                                  placeholder="Error message (optional)"
+                                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                />
+                                <button
+                                  type="submit"
+                                  class="w-full px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                >
+                                  Add Custom Response
+                                </button>
+                              </div>
+                            </form>
+                          <% end %>
                         </div>
                       <% end %>
                     </div>
