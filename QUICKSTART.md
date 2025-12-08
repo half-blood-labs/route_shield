@@ -26,8 +26,14 @@ Add to `config/config.exs`:
 
 ```elixir
 config :route_shield,
-  repo: YourApp.Repo
+  repo: YourApp.Repo,
+  # Optional: Auto-discover routes on application startup
+  auto_discover_routes: {YourApp.Router, true}
 ```
+
+**Note:** Rules are automatically loaded from the database into ETS on application startup. Routes can be:
+- Manually discovered via `mix route_shield.discover`
+- Auto-discovered on startup if `auto_discover_routes` is configured
 
 ### 2. Add to Router
 
