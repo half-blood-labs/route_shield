@@ -29,8 +29,8 @@ defmodule RouteShield.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:phoenix, "~> 1.7.0"},
-      {:phoenix_live_view, "~> 0.20.0"},
+      {:phoenix, "~> 1.7"},
+      {:phoenix_live_view, "~> 0.20 or ~> 1.0"},
       {:ecto_sql, "~> 3.11"},
       {:plug, "~> 1.14"},
       {:jason, "~> 1.4"},

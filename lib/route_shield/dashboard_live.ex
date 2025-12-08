@@ -3,7 +3,8 @@ defmodule RouteShield.DashboardLive do
   Phoenix LiveView dashboard for managing RouteShield rules.
   """
 
-  use Phoenix.LiveView
+  use Phoenix.LiveView, layout: false
+  import Ecto.Query
   alias RouteShield.Storage.ETS
   alias RouteShield.Storage.Cache
   alias RouteShield.Schema.{Route, Rule, RateLimit, IpFilter}
@@ -118,20 +119,107 @@ defmodule RouteShield.DashboardLive do
   def handle_event("create_rule", %{"route_id" => route_id}, socket) do
     route_id = String.to_integer(route_id)
 
-    attrs = %{
-      route_id: route_id,
-      enabled: true,
-      priority: 0
-    }
+    # Check if a rule already exists for this route
+    existing_rules = ETS.get_rules_for_route(route_id)
 
-    case Rule.changeset(%Rule{}, attrs) |> socket.assigns.repo.insert() do
-      {:ok, _rule} ->
-        Cache.refresh_rule(socket.assigns.repo, route_id)
-        send(self(), {:refresh_route, route_id})
-        {:noreply, put_flash(socket, :info, "Rule created successfully")}
+    if length(existing_rules) > 0 do
+      {:noreply, put_flash(socket, :error, "A rule already exists for this route. Delete it first to create a new one.")}
+    else
+      attrs = %{
+        route_id: route_id,
+        enabled: true,
+        priority: 0
+      }
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Failed to create rule")}
+      case Rule.changeset(%Rule{}, attrs) |> socket.assigns.repo.insert() do
+        {:ok, _rule} ->
+          # Refresh all rules for this route
+          refresh_rules_for_route(socket.assigns.repo, route_id)
+
+          # Update socket directly with new rules
+          route = Enum.find(socket.assigns.routes, &(&1.id == route_id))
+          rules = ETS.get_rules_for_route(route_id)
+
+          rate_limits =
+            rules
+            |> Enum.map(fn r ->
+              case ETS.get_rate_limit_for_rule(r.id) do
+                {:ok, rl} -> rl
+                _ -> nil
+              end
+            end)
+            |> Enum.filter(& &1)
+
+          ip_filters =
+            rules
+            |> Enum.flat_map(fn r ->
+              ETS.get_ip_filters_for_rule(r.id)
+            end)
+
+          socket =
+            socket
+            |> assign(:selected_route, route)
+            |> assign(:rules, rules)
+            |> assign(:rate_limits, rate_limits)
+            |> assign(:ip_filters, ip_filters)
+
+          {:noreply, put_flash(socket, :info, "Rule created successfully")}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, "Failed to create rule")}
+      end
+    end
+  end
+
+  def handle_event("delete_rule", %{"rule_id" => rule_id, "route_id" => route_id}, socket) do
+    rule_id = String.to_integer(rule_id)
+    route_id = String.to_integer(route_id)
+
+    case socket.assigns.repo.get(Rule, rule_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Rule not found")}
+
+      rule ->
+        case socket.assigns.repo.delete(rule) do
+          {:ok, _} ->
+            # Clear the deleted rule from ETS
+            :ets.match_delete(:route_shield_rules, {route_id, rule})
+
+            # Refresh all rules for this route
+            refresh_rules_for_route(socket.assigns.repo, route_id)
+
+            # Update socket directly
+            route = Enum.find(socket.assigns.routes, &(&1.id == route_id))
+            rules = ETS.get_rules_for_route(route_id)
+
+            rate_limits =
+              rules
+              |> Enum.map(fn r ->
+                case ETS.get_rate_limit_for_rule(r.id) do
+                  {:ok, rl} -> rl
+                  _ -> nil
+                end
+              end)
+              |> Enum.filter(& &1)
+
+            ip_filters =
+              rules
+              |> Enum.flat_map(fn r ->
+                ETS.get_ip_filters_for_rule(r.id)
+              end)
+
+            socket =
+              socket
+              |> assign(:selected_route, route)
+              |> assign(:rules, rules)
+              |> assign(:rate_limits, rate_limits)
+              |> assign(:ip_filters, ip_filters)
+
+            {:noreply, put_flash(socket, :info, "Rule deleted successfully")}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to delete rule")}
+        end
     end
   end
 
@@ -170,8 +258,33 @@ defmodule RouteShield.DashboardLive do
       raise "RouteShield repo not configured. Set config :route_shield, repo: YourApp.Repo"
   end
 
+  defp refresh_rules_for_route(repo, route_id) do
+    # Load all rules for this route from database
+    rules = repo.all(from(r in Rule, where: r.route_id == ^route_id))
+
+    # Clear existing rules for this route in ETS by deleting all objects with this route_id
+    :ets.match_delete(:route_shield_rules, {route_id, :_})
+
+    # Store all rules in ETS
+    Enum.each(rules, &ETS.store_rule/1)
+
+    # Refresh rate limits and IP filters for all rules
+    Enum.each(rules, fn rule ->
+      Cache.refresh_rule(repo, rule.id)
+    end)
+  end
+
   def render(assigns) do
     ~H"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>RouteShield Dashboard</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body>
     <div class="min-h-screen bg-gray-50">
       <!-- Header -->
       <header class="bg-white shadow">
@@ -259,19 +372,27 @@ defmodule RouteShield.DashboardLive do
                 <!-- Rules Section -->
                 <div class="bg-white rounded-lg shadow">
                   <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900">Rules</h2>
-                    <button
-                      phx-click="create_rule"
-                      phx-value-route_id={@selected_route.id}
-                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Create Rule
-                    </button>
+                    <h2 class="text-lg font-semibold text-gray-900">
+                      Rules
+                      <%= if length(@rules) > 0 do %>
+                        <span class="ml-2 text-sm font-normal text-gray-500">(<%= length(@rules) %>)</span>
+                      <% end %>
+                    </h2>
+                    <%= if length(@rules) == 0 do %>
+                      <button
+                        phx-click="create_rule"
+                        phx-value-route_id={@selected_route.id}
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        Create Rule
+                      </button>
+                    <% end %>
                   </div>
 
                   <%= if length(@rules) == 0 do %>
                     <div class="px-6 py-8 text-center">
-                      <p class="text-sm text-gray-500">No rules configured for this route</p>
+                      <p class="text-sm text-gray-500 mb-4">No rules configured for this route</p>
+                      <p class="text-xs text-gray-400">Click "Create Rule" above to add protection rules</p>
                     </div>
                   <% else %>
                     <div class="px-6 py-4 space-y-4">
@@ -282,12 +403,23 @@ defmodule RouteShield.DashboardLive do
                               <h3 class="text-sm font-medium text-gray-900">Rule #<%= rule.id %></h3>
                               <p class="text-xs text-gray-500">Priority: <%= rule.priority %></p>
                             </div>
-                            <span class={[
-                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                              if(rule.enabled, do: "bg-green-100 text-green-800", else: "bg-gray-100 text-gray-800")
-                            ]}>
-                              <%= if rule.enabled, do: "Enabled", else: "Disabled" %>
-                            </span>
+                            <div class="flex items-center gap-2">
+                              <span class={[
+                                "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                                if(rule.enabled, do: "bg-green-100 text-green-800", else: "bg-gray-100 text-gray-800")
+                              ]}>
+                                <%= if rule.enabled, do: "Enabled", else: "Disabled" %>
+                              </span>
+                              <button
+                                phx-click="delete_rule"
+                                phx-value-rule_id={rule.id}
+                                phx-value-route_id={@selected_route.id}
+                                class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                onclick="return confirm('Are you sure you want to delete this rule?')"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
 
                           <!-- Rate Limit -->
@@ -329,10 +461,9 @@ defmodule RouteShield.DashboardLive do
                           <!-- IP Filters -->
                           <div>
                             <p class="text-xs font-medium text-gray-700 mb-2">IP Filters</p>
-                            <%= rule_ip_filters = Enum.filter(@ip_filters, &(&1.rule_id == rule.id)) %>
-                            <%= if length(rule_ip_filters) > 0 do %>
+                            <%= if Enum.any?(@ip_filters, &(&1.rule_id == rule.id)) do %>
                               <div class="space-y-1 mb-2">
-                                <%= for ip_filter <- rule_ip_filters do %>
+                                <%= for ip_filter <- Enum.filter(@ip_filters, &(&1.rule_id == rule.id)) do %>
                                   <div class="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
                                     <span class="font-mono"><%= ip_filter.ip_address %></span>
                                     <span class={[
@@ -387,6 +518,8 @@ defmodule RouteShield.DashboardLive do
         </div>
       </div>
     </div>
+    </body>
+    </html>
     """
   end
 end
