@@ -7,6 +7,7 @@ defmodule RouteShield.Application do
   def start(_type, _args) do
     RouteShield.Storage.ETS.start_link()
     RouteShield.Rules.RateLimit.init()
+    RouteShield.Rules.ConcurrentLimit.init()
 
     # Load rules from database into ETS on startup
     load_rules_on_startup()

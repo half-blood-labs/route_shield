@@ -9,6 +9,9 @@ defmodule RouteShield.Storage.ETS do
   @rate_limits_table :route_shield_rate_limits
   @ip_filters_table :route_shield_ip_filters
   @time_restrictions_table :route_shield_time_restrictions
+  @concurrent_limits_table :route_shield_concurrent_limits
+  @custom_responses_table :route_shield_custom_responses
+  @global_blacklist_table :route_shield_global_ip_blacklist
 
   def start_link do
     :ets.new(@routes_table, [:named_table, :set, :public, read_concurrency: true])
@@ -16,6 +19,9 @@ defmodule RouteShield.Storage.ETS do
     :ets.new(@rate_limits_table, [:named_table, :bag, :public, read_concurrency: true])
     :ets.new(@ip_filters_table, [:named_table, :bag, :public, read_concurrency: true])
     :ets.new(@time_restrictions_table, [:named_table, :bag, :public, read_concurrency: true])
+    :ets.new(@concurrent_limits_table, [:named_table, :set, :public, read_concurrency: true])
+    :ets.new(@custom_responses_table, [:named_table, :set, :public, read_concurrency: true])
+    :ets.new(@global_blacklist_table, [:named_table, :bag, :public, read_concurrency: true])
 
     :ok
   end
@@ -115,11 +121,66 @@ defmodule RouteShield.Storage.ETS do
     :ets.delete_all_objects(@time_restrictions_table)
   end
 
+  def store_concurrent_limit(concurrent_limit) do
+    :ets.insert(@concurrent_limits_table, {concurrent_limit.rule_id, concurrent_limit})
+  end
+
+  def get_concurrent_limit_for_rule(rule_id) do
+    case :ets.lookup(@concurrent_limits_table, rule_id) do
+      [{_, limit}] when limit.enabled -> {:ok, limit}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def clear_concurrent_limits do
+    :ets.delete_all_objects(@concurrent_limits_table)
+  end
+
+  def store_custom_response(custom_response) do
+    :ets.insert(@custom_responses_table, {custom_response.rule_id, custom_response})
+  end
+
+  def get_custom_response_for_rule(rule_id) do
+    case :ets.lookup(@custom_responses_table, rule_id) do
+      [{_, response}] when response.enabled -> {:ok, response}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def clear_custom_responses do
+    :ets.delete_all_objects(@custom_responses_table)
+  end
+
+  def store_global_blacklist_entry(entry) do
+    :ets.insert(@global_blacklist_table, {entry.ip_address, entry})
+  end
+
+  def get_global_blacklist_entries do
+    @global_blacklist_table
+    |> :ets.tab2list()
+    |> Enum.map(fn {_key, entry} -> entry end)
+    |> Enum.filter(& &1.enabled)
+    |> Enum.filter(fn entry ->
+      if entry.expires_at do
+        DateTime.compare(DateTime.utc_now(), entry.expires_at) == :lt
+      else
+        true
+      end
+    end)
+  end
+
+  def clear_global_blacklist do
+    :ets.delete_all_objects(@global_blacklist_table)
+  end
+
   def clear_all do
     clear_routes()
     clear_rules()
     clear_rate_limits()
     clear_ip_filters()
     clear_time_restrictions()
+    clear_concurrent_limits()
+    clear_custom_responses()
+    clear_global_blacklist()
   end
 end
