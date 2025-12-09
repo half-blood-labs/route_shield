@@ -25,15 +25,40 @@ defmodule RouteShield.Application do
         :ok
 
       repo ->
-        # Load all rules, rate limits, and IP filters from database into ETS
-        RouteShield.Storage.Cache.refresh_all(repo)
+        # Try to load rules, but handle case where repo isn't started yet
+        try do
+          # Check if repo process is running
+          if repo_available?(repo) do
+            # Load all rules, rate limits, and IP filters from database into ETS
+            RouteShield.Storage.Cache.refresh_all(repo)
 
-        # Load routes from database into ETS
-        load_routes_on_startup(repo)
+            # Load routes from database into ETS
+            load_routes_on_startup(repo)
 
-        # Optionally auto-discover routes on startup if configured
-        auto_discover_routes(repo)
+            # Optionally auto-discover routes on startup if configured
+            auto_discover_routes(repo)
+          else
+            # Repo not started yet, will be loaded when dashboard is accessed
+            require Logger
+            Logger.info("RouteShield: Repo not available yet, rules will be loaded on first dashboard access")
+          end
+        rescue
+          error ->
+            # Repo not available or other error, will be loaded later
+            require Logger
+            Logger.warning("RouteShield: Could not load rules on startup: #{inspect(error)}. Rules will be loaded on first dashboard access.")
+        end
     end
+  end
+
+  defp repo_available?(repo) do
+    # Check if the repo process is running
+    case Process.whereis(repo) do
+      nil -> false
+      _pid -> true
+    end
+  rescue
+    _ -> false
   end
 
   defp load_routes_on_startup(repo) do

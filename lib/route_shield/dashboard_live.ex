@@ -21,9 +21,22 @@ defmodule RouteShield.DashboardLive do
 
   def mount(_params, _session, socket) do
     repo = get_repo()
+
+    # Refresh all rules from database into ETS (in case they weren't loaded on startup)
+    try do
+      Cache.refresh_all(repo)
+    rescue
+      error ->
+        require Logger
+        Logger.warning("RouteShield: Could not refresh cache on dashboard mount: #{inspect(error)}")
+    end
+
     routes = repo.all(Route) |> Enum.sort_by(&{&1.method, &1.path_pattern})
 
     Enum.each(routes, &ETS.store_route/1)
+
+    # Load global blacklist entries
+    global_blacklist = repo.all(GlobalIpBlacklist) |> Enum.filter(& &1.enabled)
 
     socket =
       socket
@@ -32,6 +45,11 @@ defmodule RouteShield.DashboardLive do
       |> assign(:rules, [])
       |> assign(:rate_limits, [])
       |> assign(:ip_filters, [])
+      |> assign(:time_restrictions, [])
+      |> assign(:concurrent_limits, [])
+      |> assign(:custom_responses, [])
+      |> assign(:global_blacklist, global_blacklist)
+      |> assign(:show_global_blacklist, false)
       |> assign(:repo, repo)
 
     {:ok, socket}
@@ -63,12 +81,41 @@ defmodule RouteShield.DashboardLive do
         ETS.get_ip_filters_for_rule(rule.id)
       end)
 
+    time_restrictions =
+      rules
+      |> Enum.flat_map(fn rule ->
+        ETS.get_time_restrictions_for_rule(rule.id)
+      end)
+
+    concurrent_limits =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_concurrent_limit_for_rule(rule.id) do
+          {:ok, cl} -> cl
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    custom_responses =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_custom_response_for_rule(rule.id) do
+          {:ok, cr} -> cr
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
     socket =
       socket
       |> assign(:selected_route, route)
       |> assign(:rules, rules)
       |> assign(:rate_limits, rate_limits)
       |> assign(:ip_filters, ip_filters)
+      |> assign(:time_restrictions, time_restrictions)
+      |> assign(:concurrent_limits, concurrent_limits)
+      |> assign(:custom_responses, custom_responses)
 
     {:noreply, socket}
   end
@@ -238,65 +285,6 @@ defmodule RouteShield.DashboardLive do
     end
   end
 
-  def handle_info({:refresh_route, route_id}, socket) do
-    route = Enum.find(socket.assigns.routes, &(&1.id == route_id))
-    rules = ETS.get_rules_for_route(route_id)
-
-    rate_limits =
-      rules
-      |> Enum.map(fn rule ->
-        case ETS.get_rate_limit_for_rule(rule.id) do
-          {:ok, rl} -> rl
-          _ -> nil
-        end
-      end)
-      |> Enum.filter(& &1)
-
-    ip_filters =
-      rules
-      |> Enum.flat_map(fn rule ->
-        ETS.get_ip_filters_for_rule(rule.id)
-      end)
-
-    time_restrictions =
-      rules
-      |> Enum.flat_map(fn rule ->
-        ETS.get_time_restrictions_for_rule(rule.id)
-      end)
-
-    concurrent_limits =
-      rules
-      |> Enum.map(fn rule ->
-        case ETS.get_concurrent_limit_for_rule(rule.id) do
-          {:ok, cl} -> cl
-          _ -> nil
-        end
-      end)
-      |> Enum.filter(& &1)
-
-    custom_responses =
-      rules
-      |> Enum.map(fn rule ->
-        case ETS.get_custom_response_for_rule(rule.id) do
-          {:ok, cr} -> cr
-          _ -> nil
-        end
-      end)
-      |> Enum.filter(& &1)
-
-    socket =
-      socket
-      |> assign(:selected_route, route)
-      |> assign(:rules, rules)
-      |> assign(:rate_limits, rate_limits)
-      |> assign(:ip_filters, ip_filters)
-      |> assign(:time_restrictions, time_restrictions)
-      |> assign(:concurrent_limits, concurrent_limits)
-      |> assign(:custom_responses, custom_responses)
-
-    {:noreply, socket}
-  end
-
   def handle_event("toggle_global_blacklist", _params, socket) do
     {:noreply, update(socket, :show_global_blacklist, &(!&1))}
   end
@@ -445,6 +433,65 @@ defmodule RouteShield.DashboardLive do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to create custom response")}
     end
+  end
+
+  def handle_info({:refresh_route, route_id}, socket) do
+    route = Enum.find(socket.assigns.routes, &(&1.id == route_id))
+    rules = ETS.get_rules_for_route(route_id)
+
+    rate_limits =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_rate_limit_for_rule(rule.id) do
+          {:ok, rl} -> rl
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    ip_filters =
+      rules
+      |> Enum.flat_map(fn rule ->
+        ETS.get_ip_filters_for_rule(rule.id)
+      end)
+
+    time_restrictions =
+      rules
+      |> Enum.flat_map(fn rule ->
+        ETS.get_time_restrictions_for_rule(rule.id)
+      end)
+
+    concurrent_limits =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_concurrent_limit_for_rule(rule.id) do
+          {:ok, cl} -> cl
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    custom_responses =
+      rules
+      |> Enum.map(fn rule ->
+        case ETS.get_custom_response_for_rule(rule.id) do
+          {:ok, cr} -> cr
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+
+    socket =
+      socket
+      |> assign(:selected_route, route)
+      |> assign(:rules, rules)
+      |> assign(:rate_limits, rate_limits)
+      |> assign(:ip_filters, ip_filters)
+      |> assign(:time_restrictions, time_restrictions)
+      |> assign(:concurrent_limits, concurrent_limits)
+      |> assign(:custom_responses, custom_responses)
+
+    {:noreply, socket}
   end
 
   defp parse_time(time_string) when is_binary(time_string) do
