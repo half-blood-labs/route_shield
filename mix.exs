@@ -8,6 +8,13 @@ defmodule RouteShield.MixProject do
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      description:
+        "A powerful Phoenix/Elixir plug that provides route discovery, rule-based request filtering, and a beautiful LiveView dashboard for managing route access controls.",
+      package: package(),
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/half-blood-labs/route_shield"
+      },
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
@@ -15,6 +22,17 @@ defmodule RouteShield.MixProject do
         "coveralls.post": :test,
         "coveralls.html": :test
       ]
+    ]
+  end
+
+  defp package do
+    [
+      files: ["lib", "priv", "mix.exs", "README.md", "LICENSE*"],
+      maintainers: ["Junaid Farooq"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/half-blood-labs/route_shield"
+      }
     ]
   end
 
