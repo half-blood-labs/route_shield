@@ -1,6 +1,6 @@
 <div align="center">
 
-<svg width="150" height="150" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));">
+<svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));">
   <defs>
     <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
@@ -26,6 +26,44 @@
 ## Overview
 
 RouteShield is a comprehensive solution for managing and protecting your Phoenix application routes. It automatically discovers all routes at compile-time, stores them efficiently in ETS, and provides a real-time dashboard for configuring access rules. The plug enforces these rules before authentication, making it perfect for rate limiting, IP filtering, and advanced access control.
+
+## Why RouteShield Stands Out
+
+### 🚀 **All-in-One Solution**
+Unlike other packages that focus on a single feature (rate limiting OR IP filtering), RouteShield provides a **complete security suite** in one package. You get route discovery, rate limiting, IP filtering, concurrent limits, time restrictions, and custom responses - all integrated seamlessly.
+
+### 🎯 **Zero-Configuration Route Discovery**
+RouteShield automatically discovers all your routes at **compile-time** - no manual route registration needed. It intelligently filters out static assets and Phoenix internal routes, giving you a clean view of your actual application routes.
+
+### ⚡ **Lightning-Fast Performance**
+Built on **ETS (Erlang Term Storage)** for in-memory lookups, RouteShield adds minimal overhead to your request pipeline. Rules are cached in ETS with PostgreSQL persistence, giving you the best of both worlds: speed and durability.
+
+### 🎨 **Beautiful LiveView Dashboard**
+Unlike command-line tools or configuration files, RouteShield provides a **real-time, interactive dashboard** built with Phoenix LiveView and Tailwind CSS. Manage all your security rules through an intuitive web interface - no code changes required.
+
+### 🔒 **Pre-Authentication Protection**
+RouteShield runs **before authentication** in your plug pipeline, protecting your routes from malicious traffic before it reaches your controllers. This is crucial for preventing DDoS attacks, brute force attempts, and unauthorized access.
+
+### 🛠️ **Developer-Friendly**
+- **Mix tasks** for easy setup and route discovery
+- **Comprehensive documentation** and examples
+- **Type-safe** with Ecto schemas
+- **Test-friendly** with clear separation of concerns
+- **Production-ready** with proper error handling and logging
+
+### 📊 **Enterprise-Grade Features**
+- **CIDR notation support** for IP filtering
+- **Token bucket algorithm** for accurate rate limiting
+- **Global and per-route** rule configurations
+- **Custom response messages** with multiple content types
+- **Time-based restrictions** with day-of-week support
+- **Concurrent connection limits** to prevent resource exhaustion
+
+### 🔄 **Real-Time Updates**
+Changes made in the dashboard are immediately reflected in ETS cache - no application restart required. Your security rules take effect instantly.
+
+### 🎁 **Open Source & Extensible**
+RouteShield is open source with a clean, modular architecture. Easy to extend with custom rules or integrate with your existing security infrastructure.
 
 ## Implemented Features Summary
 
