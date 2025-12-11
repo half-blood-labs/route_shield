@@ -565,9 +565,24 @@ defmodule RouteShield.DashboardLive do
       <header class="bg-white shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex items-center justify-between">
-            <div>
-              <h1 class="text-3xl font-bold text-gray-900">RouteShield Dashboard</h1>
-              <p class="mt-2 text-sm text-gray-600">Manage route protection and access rules</p>
+            <div class="flex items-center gap-4">
+              <svg width="60" height="60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="flex-shrink-0">
+                <defs>
+                  <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <path d="M100 20 L40 45 L40 90 C40 130 60 165 100 180 C140 165 160 130 160 90 L160 45 Z" fill="url(#shieldGradient)" stroke="#1E3A8A" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M100 70 L80 85 L100 100 L120 85 Z" fill="white" opacity="0.9"/>
+                <circle cx="100" cy="120" r="8" fill="white" opacity="0.9"/>
+              </svg>
+              <div>
+                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                  RouteShield Dashboard
+                </h1>
+                <p class="mt-2 text-sm text-gray-600">Manage route protection and access rules</p>
+              </div>
             </div>
             <button
               phx-click="toggle_global_blacklist"
