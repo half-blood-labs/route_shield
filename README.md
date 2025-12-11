@@ -1,6 +1,27 @@
-# RouteShield
+<div align="center">
 
-A powerful Phoenix/Elixir plug that provides route discovery, rule-based request filtering, and a beautiful LiveView dashboard for managing route access controls.
+<svg width="150" height="150" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));">
+  <defs>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <path d="M100 20 L40 45 L40 90 C40 130 60 165 100 180 C140 165 160 130 160 90 L160 45 Z" fill="url(#shieldGradient)" stroke="#1E3A8A" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 70 L80 85 L100 100 L120 85 Z" fill="white" opacity="0.9"/>
+  <circle cx="100" cy="120" r="8" fill="white" opacity="0.9"/>
+</svg>
+
+# 🛡️ RouteShield
+
+**A powerful Phoenix/Elixir plug that provides route discovery, rule-based request filtering, and a beautiful LiveView dashboard for managing route access controls.**
+
+[![Hex.pm](https://img.shields.io/hexpm/v/route_shield.svg)](https://hex.pm/packages/route_shield)
+[![Hex.pm](https://img.shields.io/hexpm/dt/route_shield.svg)](https://hex.pm/packages/route_shield)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Elixir](https://img.shields.io/badge/elixir-~%3E%201.16-blue.svg)](https://elixir-lang.org/)
+
+</div>
 
 ## Overview
 
