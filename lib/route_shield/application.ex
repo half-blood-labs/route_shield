@@ -40,13 +40,19 @@ defmodule RouteShield.Application do
           else
             # Repo not started yet, will be loaded when dashboard is accessed
             require Logger
-            Logger.info("RouteShield: Repo not available yet, rules will be loaded on first dashboard access")
+
+            Logger.info(
+              "RouteShield: Repo not available yet, rules will be loaded on first dashboard access"
+            )
           end
         rescue
           error ->
             # Repo not available or other error, will be loaded later
             require Logger
-            Logger.warning("RouteShield: Could not load rules on startup: #{inspect(error)}. Rules will be loaded on first dashboard access.")
+
+            Logger.warning(
+              "RouteShield: Could not load rules on startup: #{inspect(error)}. Rules will be loaded on first dashboard access."
+            )
         end
     end
   end

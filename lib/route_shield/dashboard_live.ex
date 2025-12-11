@@ -28,7 +28,10 @@ defmodule RouteShield.DashboardLive do
     rescue
       error ->
         require Logger
-        Logger.warning("RouteShield: Could not refresh cache on dashboard mount: #{inspect(error)}")
+
+        Logger.warning(
+          "RouteShield: Could not refresh cache on dashboard mount: #{inspect(error)}"
+        )
     end
 
     routes = repo.all(Route) |> Enum.sort_by(&{&1.method, &1.path_pattern})
