@@ -52,6 +52,7 @@ defmodule RouteShield.MixProject do
       {:ecto_sql, "~> 3.11"},
       {:plug, "~> 1.14"},
       {:jason, "~> 1.4"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:ex_unit_notifier, "~> 1.0", only: :test},
       {:mox, "~> 1.0", only: :test}
     ]
