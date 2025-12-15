@@ -23,6 +23,9 @@
 
 </div>
 
+<img width="3024" height="2212" alt="image" src="https://github.com/user-attachments/assets/2b95ae24-4d26-43ed-babb-e6b0eba5d1bc" />
+
+
 ## Overview
 
 RouteShield is a comprehensive solution for managing and protecting your Phoenix application routes. It automatically discovers all routes at compile-time, stores them efficiently in ETS, and provides a real-time dashboard for configuring access rules. The plug enforces these rules before authentication, making it perfect for rate limiting, IP filtering, and advanced access control.
